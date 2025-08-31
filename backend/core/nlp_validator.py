@@ -558,14 +558,14 @@ def process_script_file(file_path: Path) -> Dict[str, Any]:
 def process_all_scripts():
     """Process all script files and generate overall analysis"""
     input_dir = Path("data/processed/NLP_jsons")
-    output_dir = Path("data/processed/script_analysis_results")
+    output_dir = Path("data/processed/processed_nlp_validator_jsons")
     output_dir.mkdir(parents=True, exist_ok=True)
     
     json_files = list(input_dir.glob("*.json"))
     
     if not json_files:
         print(f"No JSON files found in {input_dir}")
-        return
+        return 0
     
     print(f"Found {len(json_files)} script files to analyze")
     
@@ -586,10 +586,8 @@ def process_all_scripts():
         else:
             failed += 1
     
-    print(f"\nProcessing Summary:")
-    print(f"Successful: {successful}")
-    print(f"Failed: {failed}")
-    print(f"Results saved in: {output_dir.absolute()}")
+    print(f"✅ NLP Processing Summary: {successful} successful, {failed} failed")
+    return successful
 
 def check_environment():
     """Check environment setup"""

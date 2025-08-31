@@ -81,8 +81,9 @@ class LLMProcessor:
         BASE_DIR = Path(__file__).parent  # assumes this script is in project root
 
         # Setup paths (keep the same folder names)
-        self.input_path = BASE_DIR / "data" / "processed" / "LLM_jsons"
-        self.output_path = BASE_DIR / "data" / "processed" / "processed_llm_analyzer_jsons"
+        self.input_path = Path("data/processed/LLM_jsons")
+        self.output_path = Path("data/processed/processed_llm_analyzer_jsons")
+
         
         # Create output directory if it doesn't exist
         self.output_path.mkdir(parents=True, exist_ok=True)
@@ -110,6 +111,8 @@ You are an expert AI script analyst specializing in comprehensive media content 
 
 2. **KEYWORD & TOPIC EXTRACTION**:
    - Extract top 15-20 most significant keywords/topics from the script
+   - Dont include any character names as a keyword
+   - Categorize keywords into themes, objects, locations, activities, concepts
    - Calculate occurrence frequency and percentage of total content
    - Focus on themes, objects, locations, activities, and important concepts
    - Exclude common words and focus on meaningful content markers
@@ -772,34 +775,30 @@ Provide your comprehensive analysis in the specified JSON format:
         print(f"{'='*60}")
 
 def main():
-    """Main execution function"""
+    """Main execution function - updated for integration"""
     
     print("🎬 AI-Powered LLM Processor v1.0")
     print("🤖 Powered by Google Gemini AI")
-    print("="*50)
     
     # Check for API key
     api_key = os.getenv('GEMINI_API_KEY')
     if not api_key:
-        print("❌ GEMINI_API_KEY not found in environment variables!")
-        print("💡 Please add your Gemini API key to the .env file:")
-        print("   GEMINI_API_KEY=your_api_key_here")
-        print("\n🔗 Get your API key from: https://makersuite.google.com/app/apikey")
-        return
+        print("❌ GEMINI_API_KEY not found!")
+        raise ValueError("GEMINI_API_KEY required for LLM processing")
     
     try:
-        # Initialize processor
+        # Initialize processor with updated paths
         processor = LLMProcessor()
         
         # Process all files
         results = processor.process_all_files()
         
-        # Show summary
-        processor.get_analysis_summary(results)
+        # Count successful processes
+        successful = sum(1 for success in results.values() if success)
+        print(f"✅ LLM Processing completed: {successful}/{len(results)} files processed")
+        
+        return successful
         
     except Exception as e:
-        print(f"❌ Critical error: {str(e)}")
-        print("💡 Please check your API key and internet connection")
-
-if __name__ == "__main__":
-    main()
+        print(f"❌ LLM processing failed: {str(e)}")
+        raise e

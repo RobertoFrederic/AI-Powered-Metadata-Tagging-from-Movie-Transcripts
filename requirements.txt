@@ -30,6 +30,13 @@ python-multipart>=0.0.6
 # HTTP and API Libraries
 requests>=2.31.0
 
+
+fastapi==0.104.1
+uvicorn==0.24.0
+python-multipart==0.0.6
+python-dotenv==1.0.0
+
+
 # JSON and Regex (Built-in but listed for clarity)
 # json - Built-in Python library
 # re - Built-in Python library

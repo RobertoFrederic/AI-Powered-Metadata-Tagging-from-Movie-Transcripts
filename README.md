@@ -86,54 +86,16 @@ Create a `.env` file in the root directory:
 ```bash
 # .env file
 GEMINI_API_KEY=your_gemini_api_key_here
-HUGGINGFACE_API_KEY=your_huggingface_key_here  # Optional
+HUGGINGFACE_API_KEY=your_huggingface_key_here  
 ```
 
 **Get your Gemini API key**: https://makersuite.google.com/app/apikey
 
 ## Usage Instructions
 
-### Step 1: Prepare Transcript Files
+TO run the backend 
 
-Place your raw transcript files (.txt format) in the `data/uploads/` directory.
-
-**Supported formats:**
-- Plain text transcripts
-- Movie scripts
-- TV show transcripts
-- Any text-based dialogue content
-
-### Step 2: Preprocess Transcripts
-
-Run the file handler to prepare data for both AI and NLP analysis:
-
-```bash
-python file_handler.py
-```
-
-**Output:**
-- `data/processed/LLM_jsons/` - Optimized for Gemini AI analysis
-- `data/processed/NLP_jsons/` - Structured for local NLP processing
-
-### Step 3: Run NLP Analysis
-
-Execute local NLP processing for baseline analysis:
-
-```bash
-python nlp_validator.py
-```
-
-**Output:**
-- `data/processed/processed_nlp_validator_jsons/` - Local analysis results
-- Keyword extraction, entity recognition, sentiment analysis
-- Fast processing using spaCy and VADER
-
-### Step 4: Run AI Analysis
-
-Execute Gemini AI analysis for comprehensive insights:
-
-```bash
-python llm_processor.py
+python main.py  
 ```
 
 **Output:**
@@ -304,8 +266,10 @@ python llm_processor.py
 - ✅ **File Handler**: Preprocessing pipeline complete
 - ✅ **NLP Validator**: Local analysis engine complete  
 - ✅ **LLM Processor**: Gemini AI integration complete
-- 🔄 **Dashboard**: Frontend visualization (next phase)
-- 🔄 **API Endpoints**: REST API development (next phase)
+- ✅ **Cross_validator**: cross validation complted
+- ✅ **Visualization**: visualization end json complete
+- 🔄 **Dashboard**: Frontend visualization (ongoing)
+- 🔄 **API Endpoints**: REST API development (ongoing)
 
 ## Next Steps
 

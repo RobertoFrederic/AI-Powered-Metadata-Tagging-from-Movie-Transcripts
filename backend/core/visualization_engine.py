@@ -60,16 +60,17 @@ class VisualizationEngine:
     
     def _get_content_classification_plot(self) -> Dict:
         """Prepare content classification bar plot data"""
-        if not self.nlp_data or 'content_classification' not in self.nlp_data:
+        if not self.llm_data or 'content_classification' not in self.llm_data:
             return {"categories": [], "scores": []}
         
         categories = []
         scores = []
-        for genre in self.nlp_data['content_classification']['primary_genres'][:5]:
-            categories.append(genre['category'].title())
+        for genre in self.llm_data['content_classification']['primary_genres'][:5]:
+            categories.append(genre['genre'].title())   # fixed key
             scores.append(round(genre['confidence'] * 100, 1))
         
         return {"categories": categories, "scores": scores}
+
     
     def _get_keywords_plot(self) -> Dict:
         """Prepare keywords bar plot with percentages"""
@@ -112,16 +113,26 @@ class VisualizationEngine:
         }
     
     def _get_named_entities_data(self) -> Dict:
-        """Extract named entity recognition data"""
-        if self.nlp_data and 'named_entity_summary' in self.nlp_data:
-            nes = self.nlp_data['named_entity_summary']
+        """Extract named entity recognition data with top names"""
+        if self.llm_data and 'named_entity_summary' in self.llm_data:
+            nes = self.llm_data['named_entity_summary']
+            top = nes.get('top_entities', {})
             return {
-                "people": nes.get('people', 0),
-                "locations": nes.get('locations', 0),
-                "organizations": nes.get('organizations', 0),
-                "total": nes.get('total_entities', 0)
+                "people_count": nes.get('person_count', 0),
+                "people": top.get('persons', []),
+                "locations_count": nes.get('location_count', 0),
+                "locations": top.get('locations', []),
+                "organizations_count": nes.get('organization_count', 0),
+                "organizations": top.get('organizations', []),
+                "total": nes.get('person_count', 0) + nes.get('location_count', 0) + nes.get('organization_count', 0)
             }
-        return {"people": 0, "locations": 0, "organizations": 0, "total": 0}
+        return {
+            "people_count": 0, "people": [],
+            "locations_count": 0, "locations": [],
+            "organizations_count": 0, "organizations": [],
+            "total": 0
+        }
+
     
     def _get_emotion_radar_data(self) -> Dict:
         """Prepare emotion radar chart data for main characters"""
@@ -230,62 +241,34 @@ def create_visualization_data(llm_file_path: str, nlp_file_path: str) -> Dict[st
     
     return engine.generate_complete_visualization_data()
 
-# Replace the __main__ section at the bottom of visualization_engine.py
-# Replace the __main__ section at the bottom of visualization_engine.py
-if __name__ == "__main__":
-    import os
+def generate_latest_visualization():
+    """Generate visualization data from latest processed files"""
+    llm_dir = "data/processed/processed_llm_analyzer_jsons"
+    nlp_dir = "data/processed/processed_nlp_validator_jsons"
+    
     import glob
-    import json
-
-    # Base folders for processed files
-    llm_dir = os.path.join("data", "processed", "processed_llm_analyzer_jsons")
-    nlp_dir = os.path.join("data", "processed", "processed_nlp_validator_jsons")
-
+    
     def get_latest_file(folder):
-        """Return the newest JSON file in the given folder."""
         files = glob.glob(os.path.join(folder, "*.json"))
         if not files:
             return None
         return max(files, key=os.path.getctime)
-
-    # Automatically get latest processed files
+    
     llm_file = get_latest_file(llm_dir)
     nlp_file = get_latest_file(nlp_dir)
-
-    print(f"Looking for LLM file: {llm_file}")
-    print(f"Looking for NLP file: {nlp_file}")
-
-    # Check existence
-    def check_files(llm_file, nlp_file):
-        if not llm_file or not os.path.exists(llm_file):
-            print(f"❌ LLM file not found in {llm_dir}")
-            print("Available files:")
-            for file in os.listdir(llm_dir):
-                if file.endswith(".json"):
-                    print(f"  - {file}")
-            return False
-
-        if not nlp_file or not os.path.exists(nlp_file):
-            print(f"❌ NLP file not found in {nlp_dir}")
-            print("Available files:")
-            for file in os.listdir(nlp_dir):
-                if file.endswith(".json"):
-                    print(f"  - {file}")
-            return False
-
-        return True
-
-    # Create engine and generate data
-    if check_files(llm_file, nlp_file):
+    
+    if llm_file and nlp_file:
         engine = VisualizationEngine()
         if engine.load_analysis_files(llm_file, nlp_file):
             viz_data = engine.generate_complete_visualization_data()
-
-            # Save to data folder
-            output_path = r"data\processed\visualization_engine\visualization_data.json"
+            
+            output_path = "data/processed/visualization_engine/visualization_data.json"
+            os.makedirs(os.path.dirname(output_path), exist_ok=True)
+            
             with open(output_path, 'w', encoding='utf-8') as f:
                 json.dump(viz_data, f, indent=2, ensure_ascii=False)
-
-            print(f"✅ Visualization data saved to: {output_path}")
-        else:
-            print("❌ Failed to load files")
+            
+            print(f"✅ Visualization data saved")
+            return True
+    
+    return False
