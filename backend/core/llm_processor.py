@@ -78,9 +78,11 @@ class LLMProcessor:
             max_tokens=4096
         )
         
-        # Setup paths
-        self.input_path = Path("C:/Users/rober/OneDrive/Desktop/ai-metadata-tagging/data/processed/LLM_jsons")
-        self.output_path = Path("C:/Users/rober/OneDrive/Desktop/ai-metadata-tagging/data/processed/processed_llm_analyzer_jsons")
+        BASE_DIR = Path(__file__).parent  # assumes this script is in project root
+
+        # Setup paths (keep the same folder names)
+        self.input_path = BASE_DIR / "data" / "processed" / "LLM_jsons"
+        self.output_path = BASE_DIR / "data" / "processed" / "processed_llm_analyzer_jsons"
         
         # Create output directory if it doesn't exist
         self.output_path.mkdir(parents=True, exist_ok=True)
