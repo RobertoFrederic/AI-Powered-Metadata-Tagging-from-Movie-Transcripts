@@ -145,6 +145,7 @@ def main():
     llm_dir.mkdir(parents=True, exist_ok=True)
     nlp_dir.mkdir(parents=True, exist_ok=True)
 
+    processed_count = 0
     for file in uploads_dir.glob("*.txt"):
         movie_id = file.stem
         title = file.stem.replace("_", " ").title()
@@ -160,6 +161,7 @@ def main():
             json.dump(nlp_output, f, indent=2)
 
         print(f"Processed → {file.name}: LLM & NLP JSONs saved.")
-
-if __name__ == "__main__":
-    main()
+        processed_count += 1
+    
+    print(f"✅ File preprocessing completed: {processed_count} files processed")
+    return processed_count
