@@ -124,104 +124,118 @@ You are an expert AI script analyst specializing in comprehensive media content 
    - Describe sentiment flow (consistent, improving, declining, mixed)
 
 4. **CONTENT CLASSIFICATION**:
-   - Identify primary genres (action, drama, comedy, romance, thriller, horror, etc.)
-   - Provide confidence scores for each genre
-   - List supporting evidence/keywords for each classification
+   - Identify the **content type** (e.g., Movie, TV Series, Documentary, Short Film, Animation).
+   - Determine the **intended audience** (e.g., Kids, Teen, Adult, Family, General Audience).
+   - Identify the **main themes or elements** of the content (e.g., Friendship, Survival, Technology, Fantasy, Relationships, Sacrifice).
+   - Predict the **PG/age rating** (e.g., G, PG, PG-13, R).
+   - Provide **confidence scores** (0–100) for each category.
+   - List **supporting evidence or keywords** from the script or synopsis that justify each classification.
 
-5. **CONTEXTUAL AD PLACEMENT RECOMMENDATIONS**:
-   - Identify 5-7 optimal ad placement opportunities
-   - For each placement, specify:
-     * Scene context and why it's suitable for ads
-     * Recommended ad types based on scene content (sports brands, food, cars, etc.)
-     * Timing preference (if timestamps available) or scene description
-     * Suitability score (0-1)
-   - Focus on natural breaks, scene transitions, low-intensity moments
+5. CONTEXTUAL AD PLACEMENT RECOMMENDATIONS:
+   - First, estimate the total runtime of the movie in HH:MM:SS format and return it as "estimated_duration".
+   - Identify 5–7 optimal ad placement opportunities in the content.
+   - For each placement, provide:
+       * scene_context → short description of the scene and why it's suitable for ads
+       * recommended_ad_types → categories of ads that fit (e.g., sports brands, food, cars, tech, etc.)
+       * timing_description → narrative position (e.g., "early in the movie," "mid-scene," "toward the climax")
+       * timestamp_estimate → realistic timestamp (HH:MM:SS) scaled across the estimated runtime
+       * suitability_score → a float (0–1) showing how appropriate this scene is for ads
+       * reasoning → 1–2 sentences explaining why this placement works
+   - Focus on natural breaks, scene transitions, and low-intensity moments.
+
 
 6. **SCRIPT SYNOPSIS**:
-   - Write a concise 2-3 sentence summary of the movie/content
-   - Include main plot, key characters, and genre
-   - Make it informative for users to understand the content type
+   - Write a clear and engaging **4-5 sentence summary** of the movie/content.
+   - Start by stating the **genre** and main premise (what the story is about).
+   - Mention the **key conflict or challenge** and introduce the **main characters** involved.
+   - End with the **stakes or resolution** (what’s at risk or what the story builds toward).
+   - Keep it concise, around **40–60 words**.
+
 
 7. **NAMED ENTITY RECOGNITION METADATA**:
    - Count and categorize entities: PERSON, LOCATION, ORGANIZATION
    - Provide totals for each entity type for metadata card display
    - Include top 3-5 entities in each category
 
-**OUTPUT FORMAT REQUIREMENTS:**
-Return a valid JSON structure matching this exact format:
 
-{{
-  "script_metadata": {{
-    "total_words": 30000,
-    "estimated_duration_minutes": 120,
-    "analysis_timestamp": "2025-08-30T14:30:00",
-    "processing_model": "gemini-pro"
-  }},
-  "lead_characters": [
-    {{
-      "name": "character_name",
-      "dominant_emotion": "emotion",
-      "emotion_confidence": 0.85,
-      "importance_percentage": 25.5,
-      "total_mentions": 45,
-      "character_description": "brief_role_description"
-    }}
-  ],
-  "top_keywords": [
-    {{
-      "keyword": "keyword",
-      "frequency": 23,
-      "percentage": 2.5,
-      "category": "theme"
-    }}
-  ],
-  "overall_sentiment": {{
-    "classification": "positive",
-    "confidence": 0.75,
-    "distribution": {{
-      "positive": 45,
-      "negative": 25,
-      "neutral": 30
-    }},
-    "sentiment_flow": "consistent",
-    "key_emotional_moments": ["description1", "description2"]
-  }},
-  "content_classification": {{
-    "primary_genres": [
-      {{
-        "genre": "Action",
-        "confidence": 0.85,
-        "supporting_keywords": ["fight", "gun", "chase"]
-      }}
-    ],
-    "content_rating_suggestion": "R",
-    "target_audience": "Adults 18-35"
-  }},
-  "ad_placement_recommendations": {{
-    "total_recommended_slots": 5,
-    "optimal_placements": [
-      {{
-        "placement_id": 1,
-        "scene_context": "scene_description",
-        "timing_description": "when_to_place_ad",
-        "suitability_score": 0.85,
-        "recommended_ad_types": ["ad_type1", "ad_type2"],
-        "reasoning": "why_this_placement_works",
-        "timestamp_estimate": "00:15:30"
-      }}
-    ]
-  }},
-  "script_synopsis": "Brief 2-3 sentence movie summary here",
-  "named_entity_summary": {{
-    "person_count": 15,
-    "location_count": 8,
-    "organization_count": 3,
-    "top_entities": {{
-      "persons": ["name1", "name2", "name3"],
-      "locations": ["location1", "location2", "location3"],
-      "organizations": ["org1", "org2", "org3"]
-    }}
-  }}
+
+
+**OUTPUT FORMAT REQUIREMENTS:** Return a valid JSON structure matching this exact format.  
+
+{{  
+  "script_metadata": {{    
+    "total_words": 30000,    
+    "estimated_duration_minutes": 166,    
+    "estimated_duration": "02:46:00",    
+    "analysis_timestamp": "2025-08-30T14:30:00",    
+    "processing_model": "gemini-pro"  
+  }},  
+  "lead_characters": [    
+    {{      
+      "name": "character_name",      
+      "dominant_emotion": "emotion",      
+      "emotion_confidence": 0.85,      
+      "importance_percentage": 25.5,      
+      "total_mentions": 45,      
+      "character_description": "brief_role_description"    
+    }}  
+  ],  
+  "top_keywords": [    
+    {{      
+      "keyword": "keyword",      
+      "frequency": 23,      
+      "percentage": 2.5,      
+      "category": "theme"    
+    }}  
+  ],  
+  "overall_sentiment": {{    
+    "classification": "positive",    
+    "confidence": 0.75,    
+    "distribution": {{      
+      "positive": 45,      
+      "negative": 25,      
+      "neutral": 30    
+    }},    
+    "sentiment_flow": "consistent",    
+    "key_emotional_moments": ["description1", "description2"]  
+  }},  
+  "content_classification": {{    
+    "primary_genres": [      
+      {{        
+        "genre": "Action",        
+        "confidence": 0.85,        
+        "supporting_keywords": ["fight", "gun", "chase"]      
+      }}    
+    ],    
+    "content_rating_suggestion": "R",    
+    "target_audience": "Adults 18-35"  
+  }},  
+  "ad_placement_recommendations": {{    
+    "estimated_duration": "02:46:00",     
+    "total_recommended_slots": 5,    
+    "optimal_placements": [        
+      {{        
+        "placement_id": 1,        
+        "scene_context": "scene_description",        
+        "timing_description": "when_to_place_ad",        
+        "suitability_score": 0.85,        
+        "recommended_ad_types": ["ad_type1", "ad_type2"],        
+        "reasoning": "why_this_placement_works",        
+        "timestamp_estimate": "00:15:30"        
+      }}    
+    ]  
+  }},  
+  "script_synopsis": "Brief 2-3 sentence movie summary here",  
+  "named_entity_summary": {{    
+    "person_count": 15,    
+    "location_count": 8,    
+    "organization_count": 3,    
+    "top_entities": {{      
+      "persons": ["name1", "name2", "name3"],      
+      "locations": ["location1", "location2", "location3"],      
+      "organizations": ["org1", "org2", "org3"]    
+    }}  
+  }} 
 }}
 
 **ANALYSIS INSTRUCTIONS:**
@@ -232,13 +246,14 @@ Return a valid JSON structure matching this exact format:
 - Ensure JSON format is valid and complete
 - Make recommendations PRACTICAL and ACTIONABLE
 
-**SCRIPT TO ANALYZE:**
+**SCRIPT TO ANALYZE:** 
 {transcript_text}
 
 Provide your comprehensive analysis in the specified JSON format:
 """
-        
+
         self.prompt = ChatPromptTemplate.from_template(prompt_template)
+
     
     def load_transcript(self, file_path: str) -> str:
         """Load and extract text from LLM JSON file"""
@@ -672,7 +687,7 @@ Provide your comprehensive analysis in the specified JSON format:
             print(f"✅ Analysis saved to: {output_file}")
             
             # Show analysis summary
-            self._print_analysis_summary(analysis_result)
+            self._print_analysis_summary(analysis_result,True)
             
             return True
             

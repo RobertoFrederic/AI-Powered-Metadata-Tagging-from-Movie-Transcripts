@@ -18,3 +18,6 @@ async def get_config():
         "directories_ready": True,
         "max_file_size": settings.MAX_FILE_SIZE
     }
+
+# Add after your existing @app.get("/api/files") endpoint:
+
