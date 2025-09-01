@@ -17,6 +17,8 @@ from datetime import datetime
 from typing import Dict, Any, Optional
 from typing import List
 from fastapi.staticfiles import StaticFiles
+from fastapi import FastAPI, File, UploadFile, HTTPException, BackgroundTasks, Request
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 
 # Import backend modules
 from backend.api.routes import router as api_router
@@ -194,6 +196,28 @@ async def get_results(filename: str):
             results[result_type] = {"error": f"File not found: {file_path}"}
     
     return results
+
+@app.post("/api/export-pdf")
+async def export_pdf(request: Request):
+    """Generate PDF report from dashboard data"""
+    try:
+        from backend.core.pdf_generator import generate_pdf_report
+        
+        # Get JSON data from request
+        data = await request.json()
+        
+        # Generate PDF
+        pdf_path = generate_pdf_report(data)
+        
+        # Return PDF file
+        return StreamingResponse(
+            open(pdf_path, "rb"), 
+            media_type="application/pdf",
+            headers={"Content-Disposition": "attachment; filename=metadata-report.pdf"}
+        )
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"PDF generation failed: {str(e)}")
 
 @app.get("/api/files")
 async def list_processed_files():
@@ -382,7 +406,6 @@ def run_cross_validation():
     try:
         print("🔄 Starting cross validation...")
         
-        # Get latest files from both processing outputs
         llm_dir = "data/processed/processed_llm_analyzer_jsons"
         nlp_dir = "data/processed/processed_nlp_validator_jsons"
         
@@ -398,16 +421,20 @@ def run_cross_validation():
         nlp_file = get_latest_file(nlp_dir)
         
         if llm_file and nlp_file:
+            # Use the imported function directly
             cross_val_data = create_cross_validation_data(llm_file, nlp_file)
             
-            # Save cross validation results
+            if "error" in cross_val_data:
+                raise Exception(cross_val_data["error"])
+            
+            # Save results
             output_path = "data/processed/cross_validator/cross_validation_output.json"
             os.makedirs(os.path.dirname(output_path), exist_ok=True)
             
             with open(output_path, 'w', encoding='utf-8') as f:
                 json.dump(cross_val_data, f, indent=2, ensure_ascii=False)
             
-            print("✅ Cross validation completed")
+            print("✅ Cross validation completed with real data")
         else:
             raise Exception("Could not find LLM or NLP analysis files")
             

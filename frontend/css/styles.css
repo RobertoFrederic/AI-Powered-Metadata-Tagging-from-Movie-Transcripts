@@ -200,3 +200,59 @@ html { scroll-behavior: smooth; }
   0%,100% { transform: translate(0,0) scale(1); }
   50%     { transform: translate(54px, -62px) scale(1.18); }
 }
+
+
+
+/* ===== Layered Waves Background ===== */
+.waves {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.wave {
+  position: absolute;
+  bottom: 0;
+  width: 200%;
+  height: 120px;
+  background-repeat: repeat-x;
+  background-size: 50% 120px;
+  opacity: 0.5;
+  animation: waveMove 8s linear infinite;
+}
+
+.wave1 {
+  background-image: radial-gradient(circle at 50% 0%, rgba(99,102,241,0.25) 25%, transparent 26%);
+  opacity: 0.4;
+  animation-duration: 12s;
+}
+
+.wave2 {
+  background-image: radial-gradient(circle at 50% 0%, rgba(99,102,241,0.2) 25%, transparent 26%);
+  opacity: 0.3;
+  animation-duration: 18s;
+}
+
+.wave3 {
+  background-image: radial-gradient(circle at 50% 0%, rgba(99,102,241,0.15) 25%, transparent 26%);
+  opacity: 0.25;
+  animation-duration: 25s;
+}
+
+.dark .wave1 {
+  background-image: radial-gradient(circle at 50% 0%, rgba(255,255,255,0.12) 25%, transparent 26%);
+}
+.dark .wave2 {
+  background-image: radial-gradient(circle at 50% 0%, rgba(255,255,255,0.08) 25%, transparent 26%);
+}
+.dark .wave3 {
+  background-image: radial-gradient(circle at 50% 0%, rgba(255,255,255,0.06) 25%, transparent 26%);
+}
+
+@keyframes waveMove {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}

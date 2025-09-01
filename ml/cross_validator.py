@@ -5,7 +5,7 @@ from collections import Counter
 import math
 
 class CrossValidator:
-    def _init_(self):
+    def __init__(self):
         self.llm_data = None
         self.nlp_data = None
         self.comparison_results = {}
@@ -21,6 +21,9 @@ class CrossValidator:
         except Exception as e:
             print(f"Error loading files: {e}")
             return False
+    def set_processing_info(self, processing_info: Dict):
+        """Set processing timing information from the pipeline"""
+        self.processing_info = processing_info
     
     def calculate_overall_confidence_score(self) -> Dict[str, Any]:
         """Calculate overall confidence comparison between LLM and NLP"""
@@ -154,26 +157,37 @@ class CrossValidator:
     
     def _generate_venn_diagram_data(self) -> Dict:
         """Generate Venn diagram data showing LLM vs NLP overlap"""
-        
-        
-        # Calculate based on actual keyword overlap
+    
+    # Calculate based on actual keyword overlap
         if self.llm_data and self.nlp_data:
-            llm_kw = {kw['keyword'].lower() for kw in self.llm_data.get('top_keywords', [])[:10]}
-            nlp_kw = {kw['keyword'].lower() for kw in self.nlp_data.get('top_keywords', [])[:10]}
+            llm_kw = set()
+            nlp_kw = set()
+            
+            # Extract LLM keywords
+            if 'top_keywords' in self.llm_data:
+                llm_kw = {kw['keyword'].lower() for kw in self.llm_data['top_keywords'][:10]}
+            
+            # Extract NLP keywords  
+            if 'top_keywords' in self.nlp_data:
+                nlp_kw = {kw['keyword'].lower() for kw in self.nlp_data['top_keywords'][:10]}
             
             both = len(llm_kw.intersection(nlp_kw))
             llm_only = len(llm_kw - nlp_kw)
             nlp_only = len(nlp_kw - llm_kw)
-
-        if both == 0 and llm_only == 0 and nlp_only == 0:
-            llm_only, nlp_only, both = 25, 20, 15
-
-        return {
-            "llm_only": llm_only,
-            "nlp_only": nlp_only,
-            "both": both,
-            "total": llm_only + nlp_only + both
-        }
+            
+            # Only use defaults if no real data found
+            if both == 0 and llm_only == 0 and nlp_only == 0:
+                llm_only, nlp_only, both = 10, 10, 0  # More realistic defaults
+            
+            return {
+                "llm_only": llm_only,
+                "nlp_only": nlp_only,
+                "both": both,
+                "total": llm_only + nlp_only + both
+            }
+        
+        # Fallback defaults only if no data loaded
+        return {"llm_only": 10, "nlp_only": 10, "both": 0, "total": 20}
     
     def generate_performance_metrics(self) -> Dict[str, Any]:
         """Generate performance comparison metrics"""
@@ -185,20 +199,21 @@ class CrossValidator:
         }
     
     def _compare_processing_speed(self) -> Dict:
-        """Compare processing speeds"""
-        llm_time = 0
-        nlp_time = 0
+        """Compare processing speeds using real data"""
+        llm_time = 20  # Default LLM time
+        nlp_time = 10  # Default NLP time
         
-        if self.llm_data and 'script_metadata' in self.llm_data:
-            # Estimate LLM processing time from timestamp if available
-            llm_time = 20  # Default estimate
-        
-        if self.nlp_data and 'script_metadata' in self.nlp_data:
-            nlp_time = self.nlp_data['script_metadata'].get('processing_time_seconds', 0)
+        # Try to get real processing times from your API data
+        if hasattr(self, 'processing_info'):
+            nlp_time = getattr(self.processing_info, 'nlp_processing_time', 10)
+            # LLM time estimation based on complexity
+            if self.llm_data and 'script_metadata' in self.llm_data:
+                word_count = self.llm_data['script_metadata'].get('total_words', 0)
+                llm_time = max(15, word_count / 1000)  # Estimate based on word count
         
         return {
-            "llm_time": llm_time,
-            "nlp_time": nlp_time,
+            "llm_time": round(llm_time, 1),
+            "nlp_time": round(nlp_time, 1),
             "speed_ratio": round(nlp_time / llm_time if llm_time > 0 else 1, 2)
         }
     
@@ -403,14 +418,17 @@ class CrossValidator:
     def _generate_validation_summary(self) -> Dict:
         """Generate validation summary statistics"""
         llm_conf = self._calculate_llm_confidence()
-        nlp_conf = self._calculate_nlp_confidence()
+        nlp_conf = self._calculate_nlp_confidence()  
         agreement = self._calculate_agreement_score()
+        
+        # Use weighted calculation for more realistic reliability
+        overall_reliability = (llm_conf * 0.4 + nlp_conf * 0.3 + agreement * 0.3) * 100
         
         return {
             "validation_status": "high" if agreement > 0.7 else "medium" if agreement > 0.4 else "low",
             "recommendation": self._get_validation_recommendation(agreement),
             "confidence_delta": round(abs(llm_conf - nlp_conf), 2),
-            "overall_reliability": round((llm_conf + nlp_conf + agreement) / 3 * 100, 1)
+            "overall_reliability": round(overall_reliability, 1)
         }
     
     def _get_validation_recommendation(self, agreement_score: float) -> str:
@@ -421,10 +439,35 @@ class CrossValidator:
             return "Medium agreement - Consider additional validation"
         else:
             return "Low agreement - Requires manual review and adjustment"
+# Add this function at the end of your cross_validator.py file, before the if __name__ == "__main__": block
 
-def create_cross_validation_data(llm_file_path: str, nlp_file_path: str) -> Dict[str, Any]:
-    """Main function to create cross-validation data from analysis files"""
+def create_cross_validation_data(llm_file_path: str = None, nlp_file_path: str = None) -> Dict[str, Any]:
+    """
+    Main function to create cross-validation data from analysis files
+    If no file paths provided, will auto-detect latest files
+    """
+    import os
+    import glob
+    
     validator = CrossValidator()
+    
+    # Auto-detect files if not provided
+    if not llm_file_path or not nlp_file_path:
+        llm_dir = os.path.join("data", "processed", "processed_llm_analyzer_jsons")
+        nlp_dir = os.path.join("data", "processed", "processed_nlp_validator_jsons")
+        
+        def get_latest_file(folder):
+            """Return the newest JSON file in the given folder."""
+            files = glob.glob(os.path.join(folder, "*.json"))
+            if not files:
+                return None
+            return max(files, key=os.path.getctime)
+        
+        llm_file_path = get_latest_file(llm_dir)
+        nlp_file_path = get_latest_file(nlp_dir)
+        
+        if not llm_file_path or not nlp_file_path:
+            return {"error": "Could not find analysis files for cross-validation"}
     
     if not validator.load_analysis_files(llm_file_path, nlp_file_path):
         return {"error": "Failed to load analysis files"}

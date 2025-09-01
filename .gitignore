@@ -42,3 +42,5 @@ huggingface/
 *.h5
 *.onnx
 *.pkl
+
+temp/*

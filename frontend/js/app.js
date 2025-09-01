@@ -613,6 +613,53 @@ makeChart("confidenceGauge", {
   }
 });
 
+/* =========================
+   PDF Export Functionality
+========================= */
+document.getElementById("exportPdfBtn").addEventListener("click", async () => {
+    if (!CURRENT_RESULTS) {
+        alert('No data available to export');
+        return;
+    }
+    
+    const btn = document.getElementById("exportPdfBtn");
+    const text = document.getElementById("exportText");
+    const loader = document.getElementById("exportLoader");
+    
+    // Show loading state
+    btn.disabled = true;
+    text.classList.add("hidden");
+    loader.classList.remove("hidden");
+    
+    try {
+        const response = await fetch(`${API_BASE}/export-pdf`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(CURRENT_RESULTS)
+        });
+        
+        if (!response.ok) throw new Error('Export failed');
+        
+        // Download PDF
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `metadata-report-${new Date().toISOString().split('T')[0]}.pdf`;
+        a.click();
+        window.URL.revokeObjectURL(url);
+        
+    } catch (error) {
+        console.error('Export failed:', error);
+        alert('Export failed: ' + error.message);
+    } finally {
+        // Reset button state
+        btn.disabled = false;
+        text.classList.remove("hidden");
+        loader.classList.add("hidden");
+    }
+});
+
 
   // Venn Diagram
   const venn = DATA.confidence_scores?.venn_data || { llm_only: 0, nlp_only: 0, both: 0, total: 1 };
@@ -688,13 +735,50 @@ makeChart("confidenceGauge", {
 }
 
 // Chart management
+// const evalCharts = {};
+
+// function makeChart(id, cfg) {
+//   const el = document.getElementById(id);
+//   if (evalCharts[id]) { evalCharts[id].destroy(); }
+//   evalCharts[id] = new Chart(el.getContext('2d'), cfg);
+// }
+
 const evalCharts = {};
+
+// Register ChartDataLabels globally (Chart.js 3+)
+Chart.register(ChartDataLabels);
 
 function makeChart(id, cfg) {
   const el = document.getElementById(id);
-  if (evalCharts[id]) { evalCharts[id].destroy(); }
-  evalCharts[id] = new Chart(el.getContext('2d'), cfg);
+  if (!el) return;
+  if (evalCharts[id]) evalCharts[id].destroy();
+
+  cfg.options = cfg.options || {};   // must be an object
+  cfg.options.plugins = cfg.options.plugins || {};
+
+  if (["pie", "doughnut"].includes(cfg.type)) {
+    cfg.plugins = cfg.plugins || [];
+    if (!cfg.plugins.includes(ChartDataLabels)) {
+      cfg.plugins.push(ChartDataLabels);
+    }
+
+    cfg.options.plugins.datalabels = {
+      color: "#111827",
+      font: { weight: "bold" },
+      formatter: (value, ctx) => {
+        const sum = ctx.chart.data.datasets[0].data.reduce((a,b)=>a+b,0);
+        return ((value / sum) * 100).toFixed(1) + "%";
+      }
+    };
+
+    cfg.options.plugins.legend = cfg.options.plugins.legend || {};
+    cfg.options.plugins.legend.display = false;
+  }
+
+  evalCharts[id] = new Chart(el.getContext("2d"), cfg);
 }
+
+
 
 /* =========================
    Back navigation

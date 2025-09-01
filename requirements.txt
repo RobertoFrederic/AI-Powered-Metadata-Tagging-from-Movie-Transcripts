@@ -36,6 +36,10 @@ uvicorn==0.24.0
 python-multipart==0.0.6
 python-dotenv==1.0.0
 
+# PDF Generation
+reportlab>=4.0.0
+matplotlib>=3.7.0
+
 
 # JSON and Regex (Built-in but listed for clarity)
 # json - Built-in Python library
@@ -55,3 +59,4 @@ python-dotenv==1.0.0
 # Note: After installation, run these commands to download required models:
 # python -m spacy download en_core_web_sm
 # python -m spacy download en_core_web_md
+

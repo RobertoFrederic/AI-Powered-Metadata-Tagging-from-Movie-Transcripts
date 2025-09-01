@@ -132,14 +132,14 @@ You are an expert AI script analyst specializing in comprehensive media content 
    - List **supporting evidence or keywords** from the script or synopsis that justify each classification.
 
 5. CONTEXTUAL AD PLACEMENT RECOMMENDATIONS:
-   - First, estimate the total runtime of the movie in HH:MM:SS format and return it as "estimated_duration".
-   - Identify 5–7 optimal ad placement opportunities in the content.
+   - Analyze the entire content/movie and estimate its total runtime in HH:MM:SS format.
+   - Identify 5–7 optimal ad placement opportunities evenly distributed across the story.
    - For each placement, provide:
-       * scene_context → short description of the scene and why it's suitable for ads
-       * recommended_ad_types → categories of ads that fit (e.g., sports brands, food, cars, tech, etc.)
+       * scene_context → a short description of the scene and why it’s suitable for ads
        * timing_description → narrative position (e.g., "early in the movie," "mid-scene," "toward the climax")
-       * timestamp_estimate → realistic timestamp (HH:MM:SS) scaled across the estimated runtime
-       * suitability_score → a float (0–1) showing how appropriate this scene is for ads
+       * timestamp_estimate → realistic timestamp scaled across the runtime (HH:MM:SS)
+       * suitability_score → a float (0–1) indicating how appropriate this scene is for ads
+       * recommended_ad_types → relevant categories of ads (e.g., sports, food, tech)
        * reasoning → 1–2 sentences explaining why this placement works
    - Focus on natural breaks, scene transitions, and low-intensity moments.
 
@@ -149,7 +149,7 @@ You are an expert AI script analyst specializing in comprehensive media content 
    - Start by stating the **genre** and main premise (what the story is about).
    - Mention the **key conflict or challenge** and introduce the **main characters** involved.
    - End with the **stakes or resolution** (what’s at risk or what the story builds toward).
-   - Keep it concise, around **40–60 words**.
+   - Keep it concise, around **80–95 words**.
 
 
 7. **NAMED ENTITY RECOGNITION METADATA**:

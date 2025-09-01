@@ -48,15 +48,24 @@ class VisualizationEngine:
         return characters
     
     def _get_genre_data(self) -> List[Dict]:
-        """Extract genre classification data"""
+        """Extract genre classification data safely"""
         genres = []
         if self.llm_data and 'content_classification' in self.llm_data:
-            for genre in self.llm_data['content_classification']['primary_genres']:
+            for genre in self.llm_data['content_classification'].get('primary_genres', []):
+                conf = genre.get('confidence', 0)
+                
+                # Normalize: if confidence > 1, assume it's already in %
+                if conf > 1:
+                    confidence = round(conf, 1)
+                else:
+                    confidence = round(conf * 100, 1)
+                
                 genres.append({
-                    "genre": genre['genre'],
-                    "confidence": round(genre['confidence'] * 10, 1)
+                    "genre": genre.get('genre', 'Unknown'),
+                    "confidence": confidence
                 })
         return genres
+
     
     def _get_content_classification_plot(self) -> Dict:
         """Prepare content classification bar plot data for type, audience, themes, and PG rating"""
