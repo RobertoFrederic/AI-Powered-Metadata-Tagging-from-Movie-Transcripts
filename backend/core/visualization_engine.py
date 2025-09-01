@@ -54,24 +54,39 @@ class VisualizationEngine:
             for genre in self.llm_data['content_classification']['primary_genres']:
                 genres.append({
                     "genre": genre['genre'],
-                    "confidence": round(genre['confidence'] * 100, 1)
+                    "confidence": round(genre['confidence'] * 10, 1)
                 })
         return genres
     
     def _get_content_classification_plot(self) -> Dict:
-        """Prepare content classification bar plot data"""
+        """Prepare content classification bar plot data for type, audience, themes, and PG rating"""
         if not self.llm_data or 'content_classification' not in self.llm_data:
             return {"categories": [], "scores": []}
-        
+
+        data = self.llm_data['content_classification']
+
         categories = []
         scores = []
-        for genre in self.llm_data['content_classification']['primary_genres'][:5]:
-            categories.append(genre['genre'].title())   # fixed key
-            scores.append(round(genre['confidence'] * 100, 1))
-        
+
+        # Primary genres
+        for genre in data.get('primary_genres', []):
+            categories.append(genre['genre'])
+            scores.append(round(genre['confidence'], 1))
+
+        # Target audience
+        if 'target_audience' in data:
+            categories.append(data['target_audience'])
+            scores.append(100)  # or some confidence score if available
+
+        # Content rating
+        if 'content_rating_suggestion' in data:
+            categories.append(data['content_rating_suggestion'])
+            scores.append(100)  # or some confidence score if available
+
         return {"categories": categories, "scores": scores}
 
-    
+
+        
     def _get_keywords_plot(self) -> Dict:
         """Prepare keywords bar plot with percentages"""
         if not self.llm_data or 'top_keywords' not in self.llm_data:
@@ -172,22 +187,44 @@ class VisualizationEngine:
         }
     
     def _get_ad_placement_timeline(self) -> Dict:
-        """Prepare ad placement timeline graph data"""
+        """Prepare ad placement timeline graph data with proportional timestamps based on movie duration"""
+        
         timeline_data = []
         
         if self.llm_data and 'ad_placement_recommendations' in self.llm_data:
-            for i, placement in enumerate(self.llm_data['ad_placement_recommendations']['optimal_placements']):
+            placements = self.llm_data['ad_placement_recommendations'].get('optimal_placements', [])
+            total_duration_min = self.llm_data.get('script_metadata', {}).get('estimated_duration_minutes', 120)  # fallback 2h
+            
+            num_placements = len(placements)
+            if num_placements == 0:
+                return {"placements": [], "total_slots": 0}
+            
+            # Calculate proportional timestamps if none provided
+            for i, placement in enumerate(placements):
+                # Use actual timestamp if available
+                timestamp = placement.get('timestamp') or placement.get('timestamp_estimate')
+                
+                if not timestamp:
+                    # Evenly distribute ads across the movie duration
+                    placement_minute = round((i + 1) * total_duration_min / (num_placements + 1))
+                    hours = placement_minute // 60
+                    minutes = placement_minute % 60
+                    seconds = 0
+                    timestamp = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+                
                 timeline_data.append({
                     "id": placement['placement_id'],
-                    "timestamp": placement.get('timestamp_estimate', f"00:{i*20:02d}:00"),
-                    "suitability": round(placement['suitability_score'] * 100, 1),
-                    "scene": placement['scene_context'][:50] + "..."
+                    "timestamp": timestamp,
+                    "suitability": round(placement.get('suitability_score', 0) * 100, 1),
+                    "scene": placement.get('scene_context', '')[:50] + "..."
                 })
         
         return {
             "placements": timeline_data,
             "total_slots": len(timeline_data)
         }
+
+
     
     def _get_ad_recommendations_data(self) -> List[Dict]:
         """Extract ad recommendations with details"""
@@ -207,18 +244,30 @@ class VisualizationEngine:
     
     def _get_placement_strategy_data(self) -> Dict:
         """Get placement strategy overview"""
+        
         strategy = "scene_transition_based"
         total_slots = 0
-        
+        average_suitability = 0.0
+
+        # Check NLP data for placement strategy
         if self.nlp_data and 'ad_placement_recommendations' in self.nlp_data:
             strategy = self.nlp_data['ad_placement_recommendations'].get('placement_strategy', strategy)
             total_slots = self.nlp_data['ad_placement_recommendations'].get('recommended_slots', 0)
-        
+
+        # Calculate average suitability from LLM placements if available
+        if self.llm_data and 'ad_placement_recommendations' in self.llm_data:
+            placements = self.llm_data['ad_placement_recommendations'].get('optimal_placements', [])
+            if placements:
+                average_suitability = round(
+                    sum(p.get('suitability_score', 0) for p in placements) / len(placements) * 100, 1
+                )
+
         return {
             "strategy": strategy,
             "total_recommended_slots": total_slots,
-            "average_suitability": 85.2  # Calculate from actual data
+            "average_suitability": average_suitability
         }
+
     
     def generate_complete_visualization_data(self) -> Dict[str, Any]:
         """Generate complete visualization data for all tabs"""

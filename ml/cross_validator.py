@@ -5,7 +5,7 @@ from collections import Counter
 import math
 
 class CrossValidator:
-    def __init__(self):
+    def _init_(self):
         self.llm_data = None
         self.nlp_data = None
         self.comparison_results = {}
@@ -154,9 +154,7 @@ class CrossValidator:
     
     def _generate_venn_diagram_data(self) -> Dict:
         """Generate Venn diagram data showing LLM vs NLP overlap"""
-        llm_only = 25
-        nlp_only = 20
-        both = 15
+        
         
         # Calculate based on actual keyword overlap
         if self.llm_data and self.nlp_data:
@@ -166,7 +164,10 @@ class CrossValidator:
             both = len(llm_kw.intersection(nlp_kw))
             llm_only = len(llm_kw - nlp_kw)
             nlp_only = len(nlp_kw - llm_kw)
-        
+
+        if both == 0 and llm_only == 0 and nlp_only == 0:
+            llm_only, nlp_only, both = 25, 20, 15
+
         return {
             "llm_only": llm_only,
             "nlp_only": nlp_only,
@@ -234,7 +235,7 @@ class CrossValidator:
         """Estimate LLM entity extraction accuracy"""
         if self.llm_data and 'named_entity_summary' in self.llm_data:
             total_entities = self.llm_data['named_entity_summary'].get('person_count', 0)
-            return min(90.0, 60 + (total_entities * 2))  # Heuristic based on entity count
+            return min(85.0, 70 + (total_entities * 2))  # Heuristic based on entity count
         return 75.0
     
     def _get_nlp_entity_accuracy(self) -> float:
@@ -248,14 +249,14 @@ class CrossValidator:
         """Calculate LLM keyword relevance score"""
         if self.llm_data and 'top_keywords' in self.llm_data:
             avg_percentage = np.mean([kw.get('percentage', 0) for kw in self.llm_data['top_keywords'][:5]])
-            return avg_percentage * 10000  # Convert to readable percentage
+            return avg_percentage * 100  # Convert to readable percentage
         return 65.0
     
     def _get_nlp_keyword_relevance(self) -> float:
         """Calculate NLP keyword relevance score"""
         if self.nlp_data and 'top_keywords' in self.nlp_data:
             avg_relevance = np.mean([kw.get('relevance', 0) for kw in self.nlp_data['top_keywords'][:5]])
-            return avg_relevance * 1000  # Convert to readable percentage
+            return avg_relevance * 100  # Convert to readable percentage
         return 70.0
     
     def _analyze_coverage(self) -> Dict:
@@ -431,7 +432,7 @@ def create_cross_validation_data(llm_file_path: str, nlp_file_path: str) -> Dict
     return validator.generate_cross_validation_report()
 # Add this to the end of cross_validator.py
 
-# Replace the __main__ section at the bottom of cross_validator.py
+# Replace the _main_ section at the bottom of cross_validator.py
 if __name__ == "__main__":
     import os
     import glob

@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AI Metadata Tagging</title>
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js for visualizations -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="css/styles.css"/>
+<style>
+  /* Make canvases truly fill their parents even when Chart.js sets inline attrs */
+  #evaluationSection canvas { width: 100% !important; height: 100% !important; }
+  /* Prevent flex children from forcing overflow */
+  #evaluationSection .card { min-height: 0; }
+</style>
+
+</head>
+
+<body class="bg-gray-50 text-gray-900 transition-colors duration-300">
+  <!-- Transparent Header -->
+  <header class="w-full py-4 px-6 flex justify-between items-center fixed top-0 left-0 z-50 bg-transparent backdrop-blur-md">
+    <h1 class="text-2xl font-bold text-indigo-600">MetaTag AI</h1>
+    <button id="themeToggle" class="px-3 py-2 rounded-full bg-indigo-600 text-white hover:bg-indigo-700 text-sm">🌙</button>
+  </header>
+
+  <!-- Upload / Hero -->
+  <section id="uploadSection" class="page-section active pt-32 px-6 md:px-16 relative overflow-hidden">
+    <!-- Animated gradient blobs -->
+    <div class="absolute inset-0 -z-10">
+      <div class="blob bg-pink-300"></div>
+      <div class="blob bg-indigo-300"></div>
+    </div>
+
+    <div class="max-w-3xl mx-auto text-center">
+      <h2 class="text-4xl md:text-5xl font-bold mb-6 leading-tight">
+        Upload Transcript <span class="text-indigo-600">Get Insights</span>
+      </h2>
+
+      <!-- Compact Upload Box -->
+      <div class="upload-box-tw shadow-lg mx-auto">
+        <input type="file" id="fileInput" accept=".txt,.pdf,.docx" class="hidden"/>
+        <label for="fileInput" class="flex items-center justify-center gap-2 cursor-pointer">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M4 12l8-8m0 0l8 8m-8-8v12"/>
+          </svg>
+          <span class="text-gray-600 font-medium">Choose Transcript File</span>
+        </label>
+      </div>
+
+      <button id="analyzeBtn"
+        class="mt-6 px-6 py-3 rounded-full bg-gradient-to-r from-pink-500 to-indigo-600 text-white font-semibold shadow hover:opacity-90 transition">
+        Analyze
+      </button>
+    </div>
+
+    <div class="max-w-6xl mx-auto mt-16 grid md:grid-cols-2 gap-12 items-center relative z-10">
+      <div>
+         <h3 class="text-3xl font-semibold mb-4 tracking-tight text-gray-900 dark:text-gray-100">
+  Smarter Metadata, Faster Insights
+</h3>
+<p class="leading-relaxed text-lg text-gray-700 dark:text-gray-300">
+  Transform your transcripts into actionable insights in seconds. 
+  Our AI automatically highlights topics and keywords, detects people, 
+  places and products, analyzes sentiment and emotions, tags speakers 
+  with timestamps, and classifies your content — so you spend less time 
+  tagging and more time understanding what matters.
+</p>
+
+
+      </div>
+      <div class="flex justify-center">
+        <div class="w-64 h-64 flex items-center justify-center">
+  <img src="assets/icons/landingpage_Img.jpg" alt="Transcript to Insights" class="w-full h-full object-contain">
+</div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- Loading / Analyzing -->
+  <section id="loadingSection" class="page-section hidden text-center pt-40">
+    <div class="flex flex-col items-center">
+      <div class="ai-orb"></div>
+      <p id="loadingText" class="mt-4 text-lg font-semibold text-gray-700">Analyzing transcript...</p>
+      <div class="w-64 h-2 mt-6 bg-gray-200 rounded-full overflow-hidden">
+        <span id="progressFill" class="block h-full bg-gradient-to-r from-pink-500 to-indigo-600 w-0"></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- LLM Metadata Dashboard -->
+  <section id="llmSection" class="page-section hidden pt-28 pb-24 px-6 md:px-16 relative">
+
+    <!-- Top toolbar: Back (pill), Title, Export -->
+    <div class="flex items-center justify-between gap-4 mb-6">
+      <button id="backToUpload"
+        class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white shadow text-indigo-600 hover:bg-indigo-50 border border-indigo-100">
+        <span class="inline-block -ml-1 text-lg">←</span>
+        Back to Upload
+      </button>
+
+      <h2 class="text-2xl md:text-3xl font-bold tracking-tight">Metadata Analysis</h2>
+
+      <button class="px-4 py-2 rounded-full bg-indigo-600 text-white hover:bg-indigo-700 shadow">
+        Export
+      </button>
+    </div>
+
+    <!-- Cards Grid: exact layout requested -->
+    <div id="metadataCards" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <!-- Row 1 (3 cards) -->
+      <div id="leadCharacterCard" class="card hoverable">
+        <h3 class="card-title">🎭 Lead Character</h3>
+        <div id="leadCharacter" class="mt-4"></div>
+      </div>
+
+      <div id="genreCard" class="card hoverable">
+        <h3 class="card-title">🎬 Genre</h3>
+        <ul id="genreList" class="mt-3 space-y-2"></ul>
+      </div>
+
+      <div id="classificationCard" class="card hoverable">
+        <h3 class="card-title">📂 Content Classification</h3>
+        <ul id="classificationList" class="mt-3 space-y-2"></ul>
+      </div>
+
+      <!-- Row 2 (2 cards) -->
+      <div id="keywordsCard" class="card hoverable lg:col-span-2">
+        <div class="flex items-center justify-between">
+          <h3 class="card-title">🔑 Keywords</h3>
+          <span class="text-xs text-gray-500">Frequency</span>
+        </div>
+        <div id="keywordsList" class="mt-3 flex flex-wrap gap-2"></div>
+        <div class="mt-4"><canvas id="keywordsChart" height="220"></canvas></div>
+      </div>
+
+      <div id="sentimentCard" class="card hoverable">
+        <h3 class="card-title">😊 Sentiment</h3>
+        <div class="mt-3"><canvas id="sentimentChart" height="220"></canvas></div>
+      </div>
+
+      <!-- Row 3 (2 cards) -->
+     <!-- Row 3 (2nd card for NER Summary) -->
+<div id="nerCard" class="card hoverable lg:col-span-2">
+  <h3 class="card-title">🧾 Named Entities</h3>
+  <div id="nerSummary" class="mt-4"></div>
+</div>
+
+
+     <div id="emotionsCard" class="card hoverable">
+  <h3 class="card-title">💗 Overall Emotions</h3>
+  <div class="mt-3"><canvas id="emotionsChart" height="220"></canvas></div>
+</div>
+
+
+      <!-- Row 4 (1 full width) -->
+      <div id="synopsisCard" class="card hoverable lg:col-span-3">
+        <h3 class="card-title">📝 Synopsis</h3>
+        <div id="synopsis" class="mt-3 synopsis-box"></div>
+      </div>
+    </div>
+
+    <!-- Floating CTA injected when Synopsis enters view -->
+    <button id="toAdInsights"
+      class="hidden fixed right-6 bottom-6 md:right-10 md:bottom-10 px-6 py-3 rounded-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold shadow-xl focus:outline-none focus:ring-4 focus:ring-indigo-300 animate-in">
+      Next: Ad Insights →
+    </button>
+  </section>
+<!-- Ad Insights Section -->
+<section id="adSection" class="page-section hidden pt-28 pb-24 px-6 md:px-16">
+  <div class="flex items-center justify-between gap-4 mb-6">
+    <button id="backToLLM"
+      class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white shadow text-indigo-600 hover:bg-indigo-50 border border-indigo-100">
+      <span class="inline-block -ml-1 text-lg">←</span>
+      Back to Metadata
+    </button>
+    <h2 class="text-2xl md:text-3xl font-bold tracking-tight">Ad Insights</h2>
+    <div class="w-[110px]"></div>
+  </div>
+
+  <!-- <div class="grid grid-cols-1 lg:grid-cols-2 gap-6"> -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+
+    <!-- Ad Timeline -->
+    <div class="card hoverable">
+      <h3 class="card-title">📅 Ad Timeline</h3>
+      <p class="text-sm text-gray-500 mt-1">Optimal ad placement times</p>
+      <div class="mt-3"><canvas id="adChart" height="260"></canvas></div>
+      <ul id="adList" class="mt-4 space-y-2 text-sm text-gray-600"></ul>
+    </div>
+
+    <!-- Ad Recommendations -->
+    <div class="card hoverable">
+      <h3 class="card-title">💡 Ad Recommendations</h3>
+      <p class="text-sm text-gray-500 mt-1">Contextually relevant ad types</p>
+      <ul id="adRecList" class="mt-4 space-y-3 text-sm"></ul>
+    </div>
+  </div>
+
+  <!-- Navigation -->
+  <div class="mt-6 flex justify-end">
+    <button id="toEvaluation" class="px-5 py-2 rounded-full bg-indigo-600 text-white shadow hover:bg-indigo-700">
+      Go to Evaluation →
+    </button>
+  </div>
+</section>
+<!-- Evaluation Section -->
+<!-- Evaluation Section -->
+<section id="evaluationSection" class="page-section hidden pt-32 px-6 md:px-16 pb-24">
+  <div class="flex items-center justify-between mb-6">
+    <button id="backToAd"
+      class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white shadow text-indigo-600 hover:bg-indigo-50 border border-indigo-100">
+      <span class="inline-block -ml-1 text-lg">←</span>
+      Back to Ad Insights
+    </button>
+    <h2 class="text-3xl font-bold">Evaluation</h2>
+    <div class="w-[110px]"></div>
+  </div>
+
+  <!-- Fixed vertical stack of 3 cards -->
+  <div id="evaluationContent"
+       class="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-14rem)]">
+
+    <!-- Card 1 -->
+    <div class="card flex flex-col h-full overflow-hidden">
+      <h3 class="card-title text-base font-semibold mb-2">Overall Confidence</h3>
+      <div class="relative flex-1 min-h-0">
+        <canvas id="confidenceGauge" class="absolute inset-0 w-full h-full"></canvas>
+      </div>
+    </div>
+
+    <!-- Card 2 -->
+    <div class="card flex flex-col h-full overflow-hidden">
+      <h3 class="card-title text-base font-semibold mb-2">Confusion Matrix</h3>
+      <div class="relative flex-1 min-h-0">
+        <canvas id="confusionVenn" class="absolute inset-0 w-full h-full"></canvas>
+      </div>
+      <div id="confusionTable" class="mt-2 text-xs max-h-20 overflow-auto"></div>
+    </div>
+
+    <!-- Card 3 (Radar) -->
+    <div class="card flex flex-col h-full overflow-hidden">
+      <h3 class="card-title text-base font-semibold mb-2">Radar – LLM vs NLP</h3>
+      <div class="relative flex-1 min-h-0">
+        <canvas id="triangleRadar" class="absolute inset-0 w-full h-full"></canvas>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+
+
+
+<!-- Floating Button -->
+<button id="floatingToAdInsights"
+  class="hidden fixed bottom-4 left-1/2 -translate-x-1/2 px-5 py-3 rounded-full bg-indigo-600 text-white shadow-lg">
+  🚀 Go to Ad Insights
+</button>
+
+
+  <script src="js/app.js"></script>
+</body>
+</html>

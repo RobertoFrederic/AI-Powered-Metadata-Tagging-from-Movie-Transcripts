@@ -9,6 +9,38 @@ html { scroll-behavior: smooth; }
   padding: 0.85rem;
   max-width: 520px;
 }
+.card-title {
+  font-weight: 800;
+  color: #111827;
+}
+.dark .card-title {
+  color: #f9fafb; /* near-white in dark theme */
+}
+
+.synopsis-box {
+  background: #f7f8ff;
+  color: #111827;
+}
+.dark .synopsis-box {
+  background: #1f2937; /* gray-800 */
+  color: #e5e7eb;     /* gray-200 */
+}
+
+.badge {
+  background: #eef2ff;
+  color: #3730a3;
+}
+.dark .badge {
+  background: #312e81; /* indigo-900 */
+  color: #e0e7ff;      /* indigo-100 */
+}
+#adSection .card {
+  display: flex;
+  flex-direction: column;
+}
+#adSection .card > *:last-child {
+  margin-top: auto; /* keeps lists anchored */
+}
 
 /* Animated orb (analyzing) */
 .ai-orb {
@@ -47,7 +79,31 @@ html { scroll-behavior: smooth; }
   color: #111827;
   letter-spacing: -0.01em;
 }
+/* Named Entities count boxes */
+.dark #nerSummary .bg-indigo-50 {
+  background: rgba(67, 56, 202, 0.2); /* indigo-700 transparent */
+  color: #f9fafb; /* force light text */
+}
 
+.dark #nerSummary p {
+  color: #e5e7eb !important; /* gray-200 */
+}
+.dark #confusionTable thead {
+  background: #374151; /* gray-700 */
+}
+
+#adChart {
+  max-height: 260px !important;
+  height: 260px !important;
+}
+
+.dark #confusionTable th {
+  color: #f9fafb; /* white text */
+}
+.dark .card {
+  background: rgba(31, 41, 55, 0.7); /* gray-800 with transparency */
+  border: 1px solid rgba(255,255,255,0.08);
+}
 /* Synopsis area */
 .synopsis-box {
   background: #f7f8ff;
@@ -61,11 +117,22 @@ html { scroll-behavior: smooth; }
 } 
  
 .card canvas {
-  width: 100% !important;
-  height: 100% !important;
+   width: 100% !important;
+  max-height: 260px;  /* limit growth */
+  height: 220px !important; /* base height */
 }
 
+#keywordsChart,
+#sentimentChart,
+#emotionsChart {
+  max-height: 220px !important;
+  height: 220px !important;
+}
 
+#adChart {
+  max-height: 260px !important;
+  height: 260px !important;
+}
 /* Badges */
 .badge {
   display: inline-block;
