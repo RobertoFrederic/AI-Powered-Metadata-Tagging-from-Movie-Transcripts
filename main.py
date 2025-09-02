@@ -8,17 +8,20 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 import uvicorn
+import logging
 import os
 import shutil
 from pathlib import Path
 import asyncio
 import json
+from utils.file_cleanup import cleanup_all_files, cleanup_file, schedule_delayed_cleanup, get_cleanup_info
 from datetime import datetime
 from typing import Dict, Any, Optional
 from typing import List
 from fastapi.staticfiles import StaticFiles
 from fastapi import FastAPI, File, UploadFile, HTTPException, BackgroundTasks, Request
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+
 
 # Import backend modules
 from backend.api.routes import router as api_router
@@ -28,6 +31,9 @@ from backend.core.llm_processor import main as process_llm
 from backend.core.visualization_engine import create_visualization_data
 from ml.cross_validator import create_cross_validation_data
 from config import settings
+
+
+logger = logging.getLogger(__name__)
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -101,11 +107,6 @@ processing_status = {
     "files_uploaded": []
 }
 
-@app.get("/")
-async def root():
-    """Serve the main dashboard"""
-    return FileResponse("frontend/index.html")
-
 @app.post("/api/upload")
 async def upload_file(
     background_tasks: BackgroundTasks,
@@ -162,6 +163,8 @@ async def upload_file(
             "is_processing": False,
             "error": str(e)
         })
+        if 'upload_path' in locals() and upload_path.exists():
+            cleanup_file(file.filename)
         raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
 
 @app.get("/api/status")
@@ -248,11 +251,12 @@ async def list_processed_files():
 
 
 async def run_complete_pipeline(filename: str):
-    """Run the complete processing pipeline"""
+    """Run the complete processing pipeline for a single file"""
     
     global processing_status
     
     try:
+        print(f"🔄 Starting pipeline for: {filename}")
         base_name = Path(filename).stem
         
         # Step 1: File preprocessing
@@ -260,7 +264,6 @@ async def run_complete_pipeline(filename: str):
             "current_step": "Preprocessing files",
             "progress": 20
         })
-        
         await asyncio.to_thread(process_files)
         
         # Step 2: NLP Analysis
@@ -268,23 +271,20 @@ async def run_complete_pipeline(filename: str):
             "current_step": "Running NLP analysis",
             "progress": 40
         })
-        
-        await asyncio.to_thread(process_all_scripts)
+        await asyncio.to_thread(run_nlp_analysis)
         
         # Step 3: LLM Analysis
         processing_status.update({
             "current_step": "Running LLM analysis",
             "progress": 60
         })
-        
-        await asyncio.to_thread(process_llm)
+        await asyncio.to_thread(run_llm_analysis)
         
         # Step 4: Cross Validation
         processing_status.update({
             "current_step": "Cross validation",
             "progress": 80
         })
-        
         await asyncio.to_thread(run_cross_validation)
         
         # Step 5: Generate Visualization Data
@@ -292,7 +292,6 @@ async def run_complete_pipeline(filename: str):
             "current_step": "Generating visualizations",
             "progress": 90
         })
-        
         await asyncio.to_thread(generate_visualization_data)
         
         # Complete
@@ -304,6 +303,17 @@ async def run_complete_pipeline(filename: str):
         })
         
         print(f"✅ Complete pipeline finished for {filename}")
+        schedule_delayed_cleanup(delay_minutes=7)
+        
+    except Exception as e:
+        processing_status.update({
+            "is_processing": False,
+            "current_step": "Processing failed",
+            "error": str(e),
+            "progress": 0
+        })
+        print(f"❌ Pipeline failed for {filename}: {str(e)}")
+        cleanup_file(filename)
         
     except Exception as e:
         processing_status.update({
@@ -313,6 +323,9 @@ async def run_complete_pipeline(filename: str):
             "progress": 0
         })
         print(f"❌ Pipeline failed: {str(e)}")
+        
+        # Clean up files immediately on error (no delay needed)
+        cleanup_all_files()
         
 @app.post("/api/process-uploaded")
 async def process_uploaded_files(background_tasks: BackgroundTasks):
@@ -362,16 +375,23 @@ async def run_complete_pipeline_batch(filenames: List[str]):
         await asyncio.to_thread(generate_visualization_data)
         
         processing_status.update({
-            "is_processing": False,
-            "current_step": "Complete",
-            "progress": 100
-        })
+                    "is_processing": False,
+                    "current_step": "Complete",
+                    "progress": 100
+                })
+                
+                # Schedule cleanup after batch processing (7 minutes for multiple files)
+        schedule_delayed_cleanup(delay_minutes=7)
         
     except Exception as e:
-        processing_status.update({
-            "is_processing": False,
-            "error": str(e)
-        })
+            processing_status.update({
+                "is_processing": False,
+                "current_step": "Batch processing failed",
+                "error": str(e),
+                "progress": 0
+            })
+            print(f"❌ Batch processing failed: {str(e)}")
+            cleanup_all_files()
 
 def run_nlp_analysis():
     """Run NLP analysis step"""
@@ -564,14 +584,84 @@ async def run_complete_pipeline_batch(filenames: List[str]):
         processing_status.update({"current_step": "Generating visualizations", "progress": 90})
         await asyncio.to_thread(generate_visualization_data)
         
+        # Complete
         processing_status.update({
             "is_processing": False,
-            "current_step": "Complete",
-            "progress": 100
+            "current_step": "Processing complete",
+            "progress": 100,
+            "error": None
         })
+        
+        print(f"✅ Complete pipeline finished for batch: {', '.join(filenames)}")
+        
+        # Schedule cleanup after 1 minute to allow downloads
+        schedule_delayed_cleanup(delay_minutes=7)
+        
         
     except Exception as e:
         processing_status.update({"is_processing": False, "error": str(e)})
+
+@app.get("/api/cleanup")
+async def manual_cleanup():
+    """Manually trigger file cleanup"""
+    try:
+        # Get info before cleanup
+        before_info = get_cleanup_info()
+        
+        # Perform cleanup
+        success = cleanup_all_files()
+        
+        # Get info after cleanup
+        after_info = get_cleanup_info()
+        
+        return {
+            "success": success,
+            "before": before_info,
+            "after": after_info,
+            "timestamp": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Cleanup failed: {str(e)}")
+
+@app.get("/api/cleanup/info")
+async def get_file_cleanup_info():
+    """Get information about files that can be cleaned up"""
+    try:
+        info = get_cleanup_info()
+        total_files = sum(data["count"] for data in info.values())
+        total_size = sum(data["total_size_mb"] for data in info.values())
+        
+        return {
+            "directories": info,
+            "summary": {
+                "total_files": total_files,
+                "total_size_mb": round(total_size, 2)
+            },
+            "timestamp": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get cleanup info: {str(e)}")
+
+@app.post("/api/cleanup/{filename}")
+async def cleanup_specific_file(filename: str):
+    """Clean up files for a specific uploaded file"""
+    try:
+        import urllib.parse
+        decoded_filename = urllib.parse.unquote(filename)
+        
+        success = cleanup_file(decoded_filename)
+        
+        return {
+            "success": success,
+            "filename": decoded_filename,
+            "message": f"Cleanup completed for {decoded_filename}" if success else "Cleanup failed",
+            "timestamp": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"File cleanup failed: {str(e)}")
 
 @app.on_event("startup")
 async def startup_event():
@@ -594,6 +684,43 @@ async def startup_event():
         Path(directory).mkdir(parents=True, exist_ok=True)
     
     print("✅ Application initialized successfully")
+    print("🧹 File cleanup manager ready")
+    
+    # Check if cleanup directories exist (simple check)
+    cleanup_dirs = [
+        "data/uploads",
+        "data/processed/LLM_jsons",
+        "data/processed/NLP_jsons",
+        "data/processed/processed_llm_analyzer_jsons",
+        "data/processed/processed_nlp_validator_jsons", 
+        "data/processed/cross_validator",
+        "data/processed/visualization_engine",
+    ]
+    
+    total_files = 0
+    for cleanup_dir in cleanup_dirs:
+        if os.path.exists(cleanup_dir):
+            try:
+                files = list(Path(cleanup_dir).glob("*"))
+                total_files += len([f for f in files if f.is_file()])
+            except Exception as e:
+                print(f"⚠️ Could not check directory {cleanup_dir}: {e}")
+    
+    if total_files > 0:
+        print(f"📁 Found {total_files} existing files in cleanup directories")
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Cleanup on application shutdown"""
+    print("🛑 Application shutting down...")
+    
+    # Perform immediate cleanup on shutdown
+    success = cleanup_all_files()
+    
+    if success:
+        print("🧹 Cleanup completed on shutdown")
+    else:
+        print("⚠️ Cleanup encountered issues during shutdown")
 
 if __name__ == "__main__":
     print("🎬 Starting AI-Powered Metadata Tagging System (Backend Only)")

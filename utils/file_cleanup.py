@@ -20,13 +20,15 @@ logger = logging.getLogger(__name__)
 class FileCleanupManager:
     """Manages automatic cleanup of user uploaded and processed files"""
     
-    def _init_(self):
+    def __init__(self):
         self.cleanup_dirs = [
             "data/uploads",
+            "data/processed/LLM_jsons",
+            "data/processed/NLP_jsons",
             "data/processed/processed_llm_analyzer_jsons",
             "data/processed/processed_nlp_validator_jsons",
             "data/processed/cross_validator",
-            "data/processed/visualization_engine"
+            "data/processed/visualization_engine",
         ]
         self.cleanup_enabled = True
         self.cleanup_lock = threading.Lock()
@@ -58,7 +60,7 @@ class FileCleanupManager:
                     for cleanup_dir in self.cleanup_dirs:
                         if os.path.exists(cleanup_dir):
                             # Get files before cleanup for logging
-                            files = list(Path(cleanup_dir).glob("."))
+                            files = list(Path(cleanup_dir).glob("*"))
                             
                             if files:
                                 for file_path in files:
@@ -173,7 +175,7 @@ class FileCleanupManager:
         
         for cleanup_dir in self.cleanup_dirs:
             if os.path.exists(cleanup_dir):
-                files = list(Path(cleanup_dir).glob("."))
+                files = list(Path(cleanup_dir).glob("*"))
                 file_info[cleanup_dir] = {
                     "count": len(files),
                     "files": [f.name for f in files],
@@ -267,7 +269,7 @@ class ProcessingCleanupHooks:
 # Export hooks for easy access
 hooks = ProcessingCleanupHooks()
 
-if _name_ == "_main_":
+if __name__ == "__main__":
     # Test the cleanup manager
     print("File Cleanup Manager Test")
     print("Current file info:")

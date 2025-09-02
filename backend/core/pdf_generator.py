@@ -14,11 +14,14 @@ import numpy as np
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter, A4
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
+from reportlab.platypus.flowables import KeepTogether
 from reportlab.platypus import Image as RLImage
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
 from reportlab.pdfgen import canvas
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+import matplotlib
+matplotlib.use('Agg')
 import io
 import base64
 
@@ -155,10 +158,14 @@ def generate_pdf_report(data):
         
         if keywords_data.get('keywords'):
             # Create keywords chart
-            chart_path = create_keywords_chart(keywords_data)
-            if chart_path and os.path.exists(chart_path):
-                story.append(RLImage(chart_path, width=5*inch, height=3*inch))
-                story.append(Spacer(1, 10))
+            try:
+                chart_path = create_keywords_chart(keywords_data)
+                if chart_path and os.path.exists(chart_path):
+                    story.append(RLImage(chart_path, width=5*inch, height=3*inch))
+                    story.append(Spacer(1, 10))
+            except Exception as e:
+                print(f"Warning: Could not create keywords chart: {e}")
+                story.append(Paragraph("Keywords chart unavailable", styles['Normal']))
             
             # Keywords table
             keywords = keywords_data.get('keywords', [])[:10]
@@ -187,9 +194,13 @@ def generate_pdf_report(data):
         
         if sentiment_data.get('labels'):
             # Create sentiment pie chart
-            chart_path = create_sentiment_chart(sentiment_data)
-            if chart_path and os.path.exists(chart_path):
-                story.append(RLImage(chart_path, width=4*inch, height=3*inch))
+            try:
+                chart_path = create_sentiment_chart(sentiment_data)
+                if chart_path and os.path.exists(chart_path):
+                    story.append(RLImage(chart_path, width=4*inch, height=3*inch))
+            except Exception as e:
+                print(f"Warning: Could not create sentiment chart: {e}")
+                story.append(Paragraph("Sentiment chart unavailable", styles['Normal']))
         
         story.append(Spacer(1, 20))
         
@@ -237,10 +248,13 @@ def generate_pdf_report(data):
             # Ad placement timeline chart
             timeline_data = ad_insights.get('ad_placement_timeline', {})
             if timeline_data.get('placements'):
-                chart_path = create_ad_timeline_chart(timeline_data)
-                if chart_path and os.path.exists(chart_path):
-                    story.append(RLImage(chart_path, width=6*inch, height=3*inch))
-                    story.append(Spacer(1, 15))
+                try:
+                    chart_path = create_ad_timeline_chart(timeline_data)
+                    if chart_path and os.path.exists(chart_path):
+                        story.append(RLImage(chart_path, width=6*inch, height=3*inch))
+                        story.append(Spacer(1, 15))
+                except Exception as e:
+                    print(f"Warning: Could not create ad timeline chart: {e}")
             
             # Ad recommendations table
             recommendations = ad_insights.get('ad_recommendations', [])
@@ -249,14 +263,14 @@ def generate_pdf_report(data):
                 
                 rec_data = [['Scene', 'Suitability', 'Ad Types', 'Reasoning']]
                 for rec in recommendations[:5]:  # Top 5 recommendations
-                    scene = rec.get('scene', '')[:50] + "..." if len(rec.get('scene', '')) > 50 else rec.get('scene', '')
+                    scene = wrap_text_for_cell(rec.get('scene', ''), 40)
                     suitability = f"{rec.get('suitability', 0)}%"
-                    ad_types = ", ".join(rec.get('ad_types', [])[:2])  # First 2 ad types
-                    reasoning = rec.get('reasoning', '')[:60] + "..." if len(rec.get('reasoning', '')) > 60 else rec.get('reasoning', '')
+                    ad_types = wrap_text_for_cell(", ".join(rec.get('ad_types', [])[:2]), 20)
+                    reasoning = wrap_text_for_cell(rec.get('reasoning', ''), 50)
                     
                     rec_data.append([scene, suitability, ad_types, reasoning])
                 
-                rec_table = Table(rec_data, colWidths=[2*inch, 0.8*inch, 1.5*inch, 2.2*inch])
+                rec_table = Table(rec_data, colWidths=[1.8*inch, 0.7*inch, 1.3*inch, 2*inch])
                 rec_table.setStyle(TableStyle([
                     ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#f87171')),
                     ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
@@ -328,8 +342,18 @@ def generate_pdf_report(data):
         # Add charts to story
         add_charts_to_story(story, metadata, ad_insights, cross_val)
         
-        # Build PDF
-        doc.build(story)
+        # Build PDF with error handling
+        try:
+            doc.build(story)
+            print(f"PDF generated successfully: {pdf_path}")
+        except Exception as build_error:
+            print(f"Error building PDF: {build_error}")
+            # Create minimal PDF on build error
+            minimal_story = [
+                Paragraph("PDF Generation Error", title_style),
+                Paragraph(f"Build Error: {str(build_error)}", styles['Normal'])
+            ]
+            doc.build(minimal_story)
         
         return str(pdf_path)
         
@@ -360,7 +384,8 @@ def wrap_text_for_cell(text, max_width=30):
     text = str(text)
     if len(text) <= max_width:
         return text
-       # Split into words and wrap
+    
+    # Split into words and wrap
     words = text.split()
     lines = []
     current_line = []

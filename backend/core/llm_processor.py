@@ -131,17 +131,36 @@ You are an expert AI script analyst specializing in comprehensive media content 
    - Provide **confidence scores** (0–100) for each category.
    - List **supporting evidence or keywords** from the script or synopsis that justify each classification.
 
-5. CONTEXTUAL AD PLACEMENT RECOMMENDATIONS:
-   - Analyze the entire content/movie and estimate its total runtime in HH:MM:SS format.
-   - Identify 5–7 optimal ad placement opportunities evenly distributed across the story.
-   - For each placement, provide:
-       * scene_context → a short description of the scene and why it’s suitable for ads
-       * timing_description → narrative position (e.g., "early in the movie," "mid-scene," "toward the climax")
-       * timestamp_estimate → realistic timestamp scaled across the runtime (HH:MM:SS)
-       * suitability_score → a float (0–1) indicating how appropriate this scene is for ads
-       * recommended_ad_types → relevant categories of ads (e.g., sports, food, tech)
-       * reasoning → 1–2 sentences explaining why this placement works
-   - Focus on natural breaks, scene transitions, and low-intensity moments.
+5. **CONTEXTUAL AD PLACEMENT RECOMMENDATIONS**:
+   **DURATION ESTIMATION:**
+   - First, analyze the script length and content to estimate REALISTIC movie duration
+   - Use this formula: movie_duration_minutes = max(90, min(180, word_count / 100))
+   - Format as "HH:MM:SS" (e.g., "02:15:00" for 135 minutes)
+   
+   **AD PLACEMENT DISTRIBUTION:**
+   - Create 5-7 ad placements distributed PROPORTIONALLY across the FULL estimated duration
+   - Do NOT cluster ads in the first 25 minutes - spread them from beginning to end
+   - Calculate timestamps using this logic:
+     * Ad 1: 15% of total duration
+     * Ad 2: 30% of total duration  
+     * Ad 3: 45% of total duration
+     * Ad 4: 60% of total duration
+     * Ad 5: 75% of total duration
+   
+   **For each placement provide:**
+   - scene_context: brief scene description and why suitable for ads
+   - timing_description: position in narrative (early/mid/late movie)
+   - timestamp_estimate: actual timestamp in HH:MM:SS format
+   - suitability_score: float (0-1) for ad appropriateness
+   - recommended_ad_types: relevant ad categories
+   - reasoning: why this placement works
+   
+   **EXAMPLE for 2-hour movie:**
+   - Ad 1: 00:18:00 (15% of 120 minutes)
+   - Ad 2: 00:36:00 (30% of 120 minutes)
+   - Ad 3: 00:54:00 (45% of 120 minutes)
+   - Ad 4: 01:12:00 (60% of 120 minutes)
+   - Ad 5: 01:30:00 (75% of 120 minutes)
 
 
 6. **SCRIPT SYNOPSIS**:
@@ -342,7 +361,75 @@ Provide your comprehensive analysis in the specified JSON format:
             print(f"❌ Error loading transcript from {file_path}: {str(e)}")
             print(f"🔍 Error details: {traceback.format_exc()}")
             return ""
-    
+        
+    def _validate_and_fix_duration(self, analysis_result: Dict[str, Any], transcript_text: str) -> Dict[str, Any]:
+        """Validate and fix duration calculation in analysis result"""
+        
+        try:
+            # Calculate realistic movie duration from word count
+            word_count = len(transcript_text.split()) if isinstance(transcript_text, str) else 5000
+            
+            # Movie scripts typically have 1 page per minute, with ~250 words per page
+            # But actual runtime is usually 1.5-2x the script length
+            estimated_minutes = max(90, min(180, word_count // 100))  # More realistic ratio
+            
+            # Format as HH:MM:SS
+            hours = estimated_minutes // 60
+            minutes = estimated_minutes % 60
+            estimated_duration = f"{hours:02d}:{minutes:02d}:00"
+            
+            print(f"📐 Calculated duration: {estimated_duration} ({estimated_minutes} minutes) from {word_count} words")
+            
+            # Update script metadata
+            if "script_metadata" not in analysis_result:
+                analysis_result["script_metadata"] = {}
+            
+            analysis_result["script_metadata"].update({
+                "estimated_duration_minutes": estimated_minutes,
+                "estimated_duration": estimated_duration
+            })
+            
+            # Fix ad placement recommendations
+            if "ad_placement_recommendations" not in analysis_result:
+                analysis_result["ad_placement_recommendations"] = {}
+            
+            ad_recommendations = analysis_result["ad_placement_recommendations"]
+            ad_recommendations["estimated_duration"] = estimated_duration
+            
+            # Redistribute ad placements across the full duration
+            placements = ad_recommendations.get("optimal_placements", [])
+            if placements:
+                total_slots = len(placements)
+                print(f"📺 Redistributing {total_slots} ad placements across {estimated_duration}")
+                
+                for i, placement in enumerate(placements):
+                    # Calculate proportional timestamp across full movie duration
+                    # Place ads at 15%, 30%, 45%, 60%, 75% etc. of total duration
+                    progress_percentage = (i + 1) / (total_slots + 1)
+                    slot_minutes = int(estimated_minutes * progress_percentage)
+                    
+                    hours = slot_minutes // 60
+                    minutes = slot_minutes % 60
+                    timestamp = f"{hours:02d}:{minutes:02d}:00"
+                    
+                    placement["timestamp_estimate"] = timestamp
+                    
+                    # Update timing description based on position
+                    if progress_percentage < 0.3:
+                        placement["timing_description"] = "Early in the movie"
+                    elif progress_percentage < 0.7:
+                        placement["timing_description"] = "Mid-movie"
+                    else:
+                        placement["timing_description"] = "Later in the movie"
+                    
+                    print(f"  📍 Ad {i+1}: {timestamp} ({progress_percentage:.1%} into movie)")
+            
+            return analysis_result
+            
+        except Exception as e:
+            print(f"Error validating duration: {e}")
+            return analysis_result
+        
     def chunk_text(self, text: str, max_chunk_size: int = 15000) -> List[str]:
         """Split large text into manageable chunks for LLM processing"""
         
@@ -415,6 +502,7 @@ Provide your comprehensive analysis in the specified JSON format:
                 # Single analysis for smaller scripts
                 print("📖 Processing complete script in single analysis...")
                 final_result = self._analyze_chunk(transcript_text, is_primary=True)
+                final_result = self._validate_and_fix_duration(final_result, transcript_text)
             
             # Validate result structure
             if not final_result or not isinstance(final_result, dict):
@@ -424,9 +512,17 @@ Provide your comprehensive analysis in the specified JSON format:
             if "script_metadata" not in final_result:
                 final_result["script_metadata"] = {}
             
+            total_words = len(transcript_text.split())
+            estimated_minutes = max(90, min(180, total_words // 150))
+            hours = estimated_minutes // 60
+            minutes = estimated_minutes % 60
+            estimated_duration = f"{hours:02d}:{minutes:02d}:00"
+
             final_result["script_metadata"].update({
-                "total_words": len(transcript_text.split()),
+                "total_words": total_words,
                 "total_characters": len(transcript_text),
+                "estimated_duration_minutes": estimated_minutes,
+                "estimated_duration": estimated_duration,
                 "analysis_timestamp": datetime.now().isoformat(),
                 "processing_model": "gemini-1.5-flash",
                 "status": "success"
@@ -561,9 +657,19 @@ Provide your comprehensive analysis in the specified JSON format:
             # Use main analysis as base
             final_result = main_analysis.copy()
             
+            # Calculate realistic duration from full text
+            total_words = len(full_text.split())
+            # Use more realistic word-to-minute ratio for movies
+            estimated_minutes = max(90, min(180, total_words // 100))  # Adjusted ratio
+            
+            hours = estimated_minutes // 60
+            minutes = estimated_minutes % 60
+            estimated_duration = f"{hours:02d}:{minutes:02d}:00"
+            
+            print(f"🎬 Full movie analysis: {total_words} words → {estimated_duration} duration")
+            
             # Enhance with additional insights
             all_keywords = final_result.get("top_keywords", [])
-            all_characters = final_result.get("lead_characters", [])
             
             # Merge keywords from additional chunks
             for insight in additional_insights:
@@ -580,15 +686,49 @@ Provide your comprehensive analysis in the specified JSON format:
             final_result["top_keywords"] = all_keywords[:20]
             
             # Recalculate percentages based on full text
-            total_words = len(full_text.split())
             for keyword in final_result["top_keywords"]:
                 keyword["percentage"] = round((keyword["frequency"] / total_words) * 100, 2)
             
-            # Update metadata
+            # Update metadata with correct duration
             final_result["script_metadata"]["total_words"] = total_words
-            final_result["script_metadata"]["estimated_duration_minutes"] = max(60, total_words // 180)  # ~180 words per minute
+            final_result["script_metadata"]["estimated_duration_minutes"] = estimated_minutes
+            final_result["script_metadata"]["estimated_duration"] = estimated_duration
             final_result["script_metadata"]["analysis_timestamp"] = datetime.now().isoformat()
             final_result["script_metadata"]["status"] = "synthesized"
+            
+            # CRITICAL: Fix ad placements with proper duration distribution
+            ad_recs = final_result.get("ad_placement_recommendations", {})
+            ad_recs["estimated_duration"] = estimated_duration
+            
+            placements = ad_recs.get("optimal_placements", [])
+            if placements:
+                total_slots = len(placements)
+                print(f"🔄 Redistributing {total_slots} ads across {estimated_duration}")
+                
+                for i, placement in enumerate(placements):
+                    # Distribute ads evenly across the movie duration
+                    progress = (i + 1) / (total_slots + 1)
+                    slot_minutes = int(estimated_minutes * progress)
+                    
+                    hours = slot_minutes // 60
+                    minutes = slot_minutes % 60
+                    timestamp = f"{hours:02d}:{minutes:02d}:00"
+                    
+                    placement["timestamp_estimate"] = timestamp
+                    
+                    # Update scene context and timing based on movie position
+                    if progress < 0.25:
+                        placement["timing_description"] = "Early in the movie, during setup"
+                    elif progress < 0.5:
+                        placement["timing_description"] = "First half, during development"
+                    elif progress < 0.75:
+                        placement["timing_description"] = "Second half, during rising action"
+                    else:
+                        placement["timing_description"] = "Late in the movie, before climax"
+                    
+                    print(f"  📍 Ad {i+1}: {timestamp} ({progress:.1%})")
+            
+            final_result["ad_placement_recommendations"] = ad_recs
             
             return final_result
             
