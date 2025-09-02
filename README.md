@@ -4,6 +4,22 @@
 
 An intelligent system that automatically extracts rich metadata from movie/TV transcripts using dual AI validation (Google Gemini AI + Local NLP). The system provides comprehensive script analysis including character emotions, keyword extraction, sentiment analysis, genre classification, and smart advertisement placement recommendations.
 
+## Table of Contents
+1. [Project Overview](#project-overview)
+2. [Key Features](#key-features)
+3. [Architecture](#project-architecture)
+4. [Technology Stack](#technology-stack)
+5. [Installation](#installation--setup)
+6. [Usage](#usage-instructions)
+7. [Analysis Output](#analysis-output-structure)
+8. [Advanced Features](#advanced-features)
+9. [Troubleshooting](#troubleshooting)
+10. [API Limits](#api-limits--costs)
+11. [Project Status](#project-status)
+12. [Next Steps](#next-steps)
+13. [Support](#support)
+
+
 ## Key Features
 
 - **Dual Validation Architecture**: Combines Gemini AI analysis with local NLP processing for maximum accuracy
